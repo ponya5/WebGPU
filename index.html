@@ -163,8 +163,13 @@
     .row {
       display: flex;
       gap: var(--spacing-md);
-      align-items: center;
+      align-items: flex-end;
       flex-wrap: wrap;
+    }
+
+    .row > * {
+      display: flex;
+      flex-direction: column;
     }
 
     .status-badge {
@@ -222,6 +227,7 @@
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
       background: white;
       color: var(--text-primary);
+      height: 40px;
     }
 
     select:focus, input[type="number"]:focus {
@@ -268,6 +274,10 @@
       background: var(--primary-gradient);
       color: white;
       box-shadow: var(--shadow-sm);
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     button:hover:not(:disabled) {
@@ -473,8 +483,13 @@
             <option value="Xenova/Phi-3-mini-4k-instruct">Phi-3-mini-4k-instruct (2GB)</option>
           </select>
         </div>
-        <button id="loadBtn">Load Model</button>
-        <span id="loadState" class="muted"></span>
+        <div>
+          <label style="visibility: hidden;">Action</label>
+          <button id="loadBtn">Load Model</button>
+        </div>
+        <div style="align-self: flex-end;">
+          <span id="loadState" class="muted"></span>
+        </div>
       </div>
       <div class="tip">
         💡 First load can take a while because the model files download and get cached by the browser. You can view cached models in DevTools → Application → Cache Storage.
@@ -493,7 +508,10 @@
       </div>
       <textarea id="prompt" rows="5" placeholder="Enter your prompt here...">Write a short checklist for debugging a flaky E2E test.</textarea>
       <div class="row" style="margin-top: var(--spacing-md);">
-        <button id="runBtn" disabled>Generate</button>
+        <div>
+          <label style="visibility: hidden;">Action</label>
+          <button id="runBtn" disabled>Generate</button>
+        </div>
         <div>
           <label for="maxTokens">Max Tokens</label>
           <input id="maxTokens" type="number" value="120" min="16" max="512" />
@@ -502,7 +520,9 @@
           <label for="temp">Temperature</label>
           <input id="temp" type="number" value="0.7" step="0.1" min="0" max="2" />
         </div>
-        <span id="runState" class="muted"></span>
+        <div style="align-self: flex-end;">
+          <span id="runState" class="muted"></span>
+        </div>
       </div>
     </div>
 
