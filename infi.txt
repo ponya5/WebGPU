@@ -1,0 +1,4 @@
+i’m using WebGPU with transformers.js
+this is my poc, just save the index.html in some empty folder, and then run a local webserver in that folder such as:
+python -m http.serverthen open a browser at 
+http://localhost:8000

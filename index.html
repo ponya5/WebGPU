@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebGPU LLM (single file)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 900px; }
+    textarea { width: 100%; box-sizing: border-box; padding: 12px; font-size: 14px; }
+    button { padding: 10px 14px; font-size: 14px; cursor: pointer; }
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-top: 14px; }
+    .muted { color: #666; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+    .ok { color: #0a7; font-weight: 600; }
+    .bad { color: #c33; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>WebGPU LLM (single HTML)</h1>
+  <p class="muted">
+    Uses <code>Transformers.js</code> + <code>WebGPU</code>.
+    Best in Chrome/Edge. Start with a tiny model.
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="muted">WebGPU status</div>
+        <div id="gpuStatus">Checking…</div>
+      </div>
+
+      <div>
+        <div class="muted">Model</div>
+        <select id="modelSelect">
+          <!-- Tiny model to start. You can change later. -->
+          <option value="onnx-community/Qwen2.5-0.5B-Instruct">onnx-community/Qwen2.5-0.5B-Instruct</option>
+          <option value="onnx-community/Qwen2.5-1.5B-Instruct">onnx-community/Qwen2.5-1.5B-Instruct</option>
+          <option value="Xenova/Phi-3-mini-4k-instruct">Xenova/Phi-3-mini-4k-instruct</option>
+        </select>
+      </div>
+
+      <button id="loadBtn">Load model</button>
+      <span id="loadState" class="muted"></span>
+    </div>
+
+    <p class="muted" style="margin-top: 10px;">
+      Tip: First load can take a while because the model files download and get cached by the browser.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="muted">Prompt</div>
+    <textarea id="prompt" rows="5">Write a short checklist for debugging a flaky E2E test.</textarea>
+    <div class="row" style="margin-top: 10px;">
+      <button id="runBtn" disabled>Generate</button>
+      <label class="muted">
+        Max new tokens:
+        <input id="maxTokens" type="number" value="120" min="16" max="512" style="width: 90px;" />
+      </label>
+      <label class="muted">
+        Temperature:
+        <input id="temp" type="number" value="0.7" step="0.1" min="0" max="2" style="width: 90px;" />
+      </label>
+      <span id="runState" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="muted">Output</div>
+    <pre id="output"></pre>
+  </div>
+
+  <script type="module">
+    const gpuStatus = document.getElementById('gpuStatus');
+    const loadBtn = document.getElementById('loadBtn');
+    const runBtn = document.getElementById('runBtn');
+    const loadState = document.getElementById('loadState');
+    const runState = document.getElementById('runState');
+    const output = document.getElementById('output');
+    const promptEl = document.getElementById('prompt');
+    const modelSelect = document.getElementById('modelSelect');
+    const maxTokensEl = document.getElementById('maxTokens');
+    const tempEl = document.getElementById('temp');
+
+
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Unhandled rejection:", e.reason);
+});
+
+navigator.gpu?.addEventListener?.("uncapturederror", (e) => {
+  console.error("WebGPU uncaptured error:", e.error);
+});
+    // Basic WebGPU availability check
+    if (!('gpu' in navigator)) {
+      gpuStatus.innerHTML = `<span class="bad">WebGPU not available</span> (try latest Chrome/Edge)`;
+    } else {
+      try {
+        const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+        if (!adapter) {
+          gpuStatus.innerHTML = `<span class="bad">WebGPU adapter not found</span>`;
+        } else {
+          const info = adapter.info || {};
+          gpuStatus.innerHTML = `<span class="ok">WebGPU available</span>` +
+            (info.description ? ` — ${info.description}` : ``);
+        }
+      } catch (e) {
+        gpuStatus.innerHTML = `<span class="bad">WebGPU error</span>: ${e?.message || e}`;
+      }
+    }
+
+    // Load Transformers.js from CDN
+    // Pin a version for stability
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+
+
+    // Prefer WebGPU
+    env.backends.onnx.wasm.numThreads = 1; // reduce CPU contention
+    env.allowLocalModels = false; // set true only if you host files locally
+    // Try to force WebGPU if available
+    // (If WebGPU isn't available, it will fall back to WASM.)
+    env.backends.onnx.preferredBackend = 'webgpu';
+
+    let generator = null;
+
+    loadBtn.addEventListener('click', async () => {
+      const model = modelSelect.value;
+      loadState.textContent = 'Loading… (first time downloads model)';
+      output.textContent = '';
+      runBtn.disabled = true;
+      generator = null;
+
+      try {
+        // text-generation pipeline (causal LM)
+        generator = await pipeline('text-generation', model, {
+          // device: 'webgpu' is implied via preferredBackend, but we can still provide it:
+          device: 'webgpu',
+          dtype: "q4",
+        });
+
+        loadState.textContent = 'Loaded ✅';
+        runBtn.disabled = false;
+      } catch (e) {
+        loadState.textContent = `Load failed ❌: ${e?.message || e}`;
+        console.error(e);
+      }
+    });
+
+    runBtn.addEventListener('click', async () => {
+      if (!generator) return;
+
+      const prompt = promptEl.value.trim();
+      if (!prompt) return;
+
+      output.textContent = '';
+      runState.textContent = 'Generating…';
+      runBtn.disabled = true;
+
+      const max_new_tokens = Number(maxTokensEl.value || 120);
+      const temperature = Number(tempEl.value || 0.7);
+
+      try {
+        const t0 = performance.now();
+
+        // Simple instruct wrapper (works reasonably with instruct models)
+        const fullPrompt =
+`You are a helpful assistant.
+User: ${prompt}
+Assistant:`;
+
+        const res = await generator(fullPrompt, {
+          max_new_tokens,
+          do_sample: temperature > 0,
+          temperature,
+          // Keep it small to fit VRAM:
+          repetition_penalty: 1.05,
+        });
+
+        const t1 = performance.now();
+        const text = res?.[0]?.generated_text ?? JSON.stringify(res, null, 2);
+
+        // Show only assistant portion if present
+        const idx = text.lastIndexOf('Assistant:');
+        output.textContent = (idx >= 0 ? text.slice(idx + 'Assistant:'.length) : text).trim();
+
+        runState.textContent = `Done in ${((t1 - t0) / 1000).toFixed(2)}s`;
+      } catch (e) {
+        runState.textContent = `Generate failed ❌: ${e?.message || e}`;
+        console.error(e);
+      } finally {
+        runBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
