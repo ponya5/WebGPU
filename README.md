@@ -402,10 +402,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 ### v1.0.0 (2026-02-03)
 - ✨ Initial release
 - 🎨 Modern gradient UI design
-- 💡 Interactive help tooltips
-- 📊 Real-time GPU performance monitoring
-- 🔗 Social footer with links
-- 📚 Comprehensive documentation
+
 
 ---
 
