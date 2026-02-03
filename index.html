@@ -3,76 +3,579 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WebGPU LLM (single file)</title>
+  <title>WebGPU LLM Showcase</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 900px; }
-    textarea { width: 100%; box-sizing: border-box; padding: 12px; font-size: 14px; }
-    button { padding: 10px 14px; font-size: 14px; cursor: pointer; }
-    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-top: 14px; }
-    .muted { color: #666; }
-    pre { white-space: pre-wrap; word-break: break-word; }
-    .ok { color: #0a7; font-weight: 600; }
-    .bad { color: #c33; font-weight: 600; }
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      --card-bg: #ffffff;
+      --text-primary: #2d3748;
+      --text-secondary: #718096;
+      --text-muted: #a0aec0;
+      --success: #48bb78;
+      --warning: #ed8936;
+      --error: #f56565;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-xl: 32px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-lg);
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      flex: 1;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: var(--spacing-xl);
+      padding: var(--spacing-lg) 0;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+      box-shadow: var(--shadow-md);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex: 1;
+    }
+
+    .help-icon {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary-gradient);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: help;
+      transition: transform 0.2s ease;
+    }
+
+    .help-icon:hover {
+      transform: scale(1.1);
+    }
+
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: var(--text-primary);
+      color: white;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      line-height: 1.4;
+      width: 280px;
+      max-width: 90vw;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 1000;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--text-primary);
+    }
+
+    .help-icon:hover .tooltip,
+    .help-icon:focus .tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-12px);
+    }
+
+    .row {
+      display: flex;
+      gap: var(--spacing-md);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-xs) var(--spacing-md);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .status-badge.success {
+      background: rgba(72, 187, 120, 0.1);
+      color: var(--success);
+    }
+
+    .status-badge.error {
+      background: rgba(245, 101, 101, 0.1);
+      color: var(--error);
+    }
+
+    .status-badge.warning {
+      background: rgba(237, 137, 54, 0.1);
+      color: var(--warning);
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    label {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: var(--spacing-xs);
+    }
+
+    select, input[type="number"] {
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      background: white;
+      color: var(--text-primary);
+    }
+
+    select:focus, input[type="number"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    select {
+      cursor: pointer;
+      min-width: 200px;
+    }
+
+    input[type="number"] {
+      width: 90px;
+    }
+
+    textarea {
+      width: 100%;
+      padding: var(--spacing-md);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      resize: vertical;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      line-height: 1.6;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    button {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--primary-gradient);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-md);
+    }
+
+    .info-item {
+      padding: var(--spacing-md);
+      background: rgba(102, 126, 234, 0.05);
+      border-radius: var(--radius-sm);
+      border-left: 3px solid #667eea;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: var(--spacing-xs);
+      font-weight: 600;
+    }
+
+    .info-value {
+      font-size: 1rem;
+      color: var(--text-primary);
+      font-weight: 600;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(0, 0, 0, 0.02);
+      padding: var(--spacing-md);
+      border-radius: var(--radius-sm);
+      border-left: 3px solid #667eea;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: var(--text-primary);
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .tip {
+      background: rgba(237, 137, 54, 0.1);
+      border-left: 3px solid var(--warning);
+      padding: var(--spacing-md);
+      border-radius: var(--radius-sm);
+      margin-top: var(--spacing-md);
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    footer {
+      margin-top: var(--spacing-xl);
+      padding: var(--spacing-xl) 0;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-content {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .copyright {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .social-links {
+      display: flex;
+      justify-content: center;
+      gap: var(--spacing-lg);
+      align-items: center;
+    }
+
+    .social-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+      color: var(--text-primary);
+    }
+
+    .social-link:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      background: var(--primary-gradient);
+      color: white;
+    }
+
+    .social-link svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: var(--spacing-md);
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      .subtitle {
+        font-size: 1rem;
+      }
+
+      .card {
+        padding: var(--spacing-md);
+      }
+
+      .row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tooltip {
+        width: 240px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>WebGPU LLM (single HTML)</h1>
-  <p class="muted">
-    Uses <code>Transformers.js</code> + <code>WebGPU</code>.
-    Best in Chrome/Edge. Start with a tiny model.
-  </p>
+  <div class="container">
+    <header>
+      <h1>WebGPU LLM Showcase</h1>
+      <p class="subtitle">
+        Experience GPU-accelerated Large Language Models running directly in your browser using WebGPU and Transformers.js
+      </p>
+    </header>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <div class="muted">WebGPU status</div>
-        <div id="gpuStatus">Checking…</div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">WebGPU Status</span>
+        <span class="help-icon" tabindex="0" aria-label="Help">
+          ?
+          <span class="tooltip" role="tooltip">
+            WebGPU is a modern graphics API that enables GPU-accelerated machine learning in your browser. This shows if your browser supports it and which GPU is available.
+          </span>
+        </span>
       </div>
-
-      <div>
-        <div class="muted">Model</div>
-        <select id="modelSelect">
-          <!-- Tiny model to start. You can change later. -->
-          <option value="onnx-community/Qwen2.5-0.5B-Instruct">onnx-community/Qwen2.5-0.5B-Instruct</option>
-          <option value="onnx-community/Qwen2.5-1.5B-Instruct">onnx-community/Qwen2.5-1.5B-Instruct</option>
-          <option value="Xenova/Phi-3-mini-4k-instruct">Xenova/Phi-3-mini-4k-instruct</option>
-        </select>
-      </div>
-
-      <button id="loadBtn">Load model</button>
-      <span id="loadState" class="muted"></span>
+      <div id="gpuStatus">Checking…</div>
+      <div id="gpuDetails"></div>
     </div>
 
-    <p class="muted" style="margin-top: 10px;">
-      Tip: First load can take a while because the model files download and get cached by the browser.
-    </p>
-  </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Model Selection</span>
+        <span class="help-icon" tabindex="0" aria-label="Help">
+          ?
+          <span class="tooltip" role="tooltip">
+            Choose a language model to load. Smaller models (0.5B-1.5B parameters) load faster and use less memory. First load downloads the model (~500MB-2GB) and caches it in your browser (DevTools → Application → Cache Storage).
+          </span>
+        </span>
+      </div>
+      <div class="row">
+        <div>
+          <label for="modelSelect">Model</label>
+          <select id="modelSelect">
+            <option value="onnx-community/Qwen2.5-0.5B-Instruct">Qwen2.5-0.5B-Instruct (500MB)</option>
+            <option value="onnx-community/Qwen2.5-1.5B-Instruct">Qwen2.5-1.5B-Instruct (1.5GB)</option>
+            <option value="Xenova/Phi-3-mini-4k-instruct">Phi-3-mini-4k-instruct (2GB)</option>
+          </select>
+        </div>
+        <button id="loadBtn">Load Model</button>
+        <span id="loadState" class="muted"></span>
+      </div>
+      <div class="tip">
+        💡 First load can take a while because the model files download and get cached by the browser. You can view cached models in DevTools → Application → Cache Storage.
+      </div>
+    </div>
 
-  <div class="card">
-    <div class="muted">Prompt</div>
-    <textarea id="prompt" rows="5">Write a short checklist for debugging a flaky E2E test.</textarea>
-    <div class="row" style="margin-top: 10px;">
-      <button id="runBtn" disabled>Generate</button>
-      <label class="muted">
-        Max new tokens:
-        <input id="maxTokens" type="number" value="120" min="16" max="512" style="width: 90px;" />
-      </label>
-      <label class="muted">
-        Temperature:
-        <input id="temp" type="number" value="0.7" step="0.1" min="0" max="2" style="width: 90px;" />
-      </label>
-      <span id="runState" class="muted"></span>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Prompt</span>
+        <span class="help-icon" tabindex="0" aria-label="Help">
+          ?
+          <span class="tooltip" role="tooltip">
+            Enter your question or instruction here. The AI model will generate a response based on your prompt. Max tokens controls response length, temperature controls creativity (higher = more creative).
+          </span>
+        </span>
+      </div>
+      <textarea id="prompt" rows="5" placeholder="Enter your prompt here...">Write a short checklist for debugging a flaky E2E test.</textarea>
+      <div class="row" style="margin-top: var(--spacing-md);">
+        <button id="runBtn" disabled>Generate</button>
+        <div>
+          <label for="maxTokens">Max Tokens</label>
+          <input id="maxTokens" type="number" value="120" min="16" max="512" />
+        </div>
+        <div>
+          <label for="temp">Temperature</label>
+          <input id="temp" type="number" value="0.7" step="0.1" min="0" max="2" />
+        </div>
+        <span id="runState" class="muted"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Output</span>
+        <span class="help-icon" tabindex="0" aria-label="Help">
+          ?
+          <span class="tooltip" role="tooltip">
+            The AI-generated response appears here. Generation time depends on your GPU, model size, and requested token count.
+          </span>
+        </span>
+      </div>
+      <pre id="output">Your generated response will appear here...</pre>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">GPU Performance Monitor</span>
+        <span class="help-icon" tabindex="0" aria-label="Help">
+          ?
+          <span class="tooltip" role="tooltip">
+            Real-time GPU resource usage during model inference. Shows memory estimates and generation performance metrics.
+          </span>
+        </span>
+      </div>
+      <div class="info-grid" id="gpuMonitor">
+        <div class="info-item">
+          <div class="info-label">Backend</div>
+          <div class="info-value" id="backend">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Est. VRAM Usage</div>
+          <div class="info-value" id="vramUsage">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Generation Speed</div>
+          <div class="info-value" id="genSpeed">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Total Time</div>
+          <div class="info-value" id="totalTime">—</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="muted">Output</div>
-    <pre id="output"></pre>
-  </div>
+  <footer>
+    <div class="footer-content">
+      <div class="copyright">© 2026 Daniel Shalom</div>
+      <div class="social-links">
+        <a href="https://www.linkedin.com/in/daniel-shalom-13987a1a/" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+          </svg>
+        </a>
+        <a href="https://github.com/ponya5" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="GitHub Profile">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+        </a>
+        <a href="https://github.com/ponya5/WebGPU" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Project Repository">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </footer>
 
   <script type="module">
     const gpuStatus = document.getElementById('gpuStatus');
+    const gpuDetails = document.getElementById('gpuDetails');
     const loadBtn = document.getElementById('loadBtn');
     const runBtn = document.getElementById('runBtn');
     const loadState = document.getElementById('loadState');
@@ -82,66 +585,94 @@
     const modelSelect = document.getElementById('modelSelect');
     const maxTokensEl = document.getElementById('maxTokens');
     const tempEl = document.getElementById('temp');
+    const backendEl = document.getElementById('backend');
+    const vramUsageEl = document.getElementById('vramUsage');
+    const genSpeedEl = document.getElementById('genSpeed');
+    const totalTimeEl = document.getElementById('totalTime');
 
+    let gpuAdapter = null;
 
-window.addEventListener("unhandledrejection", (e) => {
-  console.error("Unhandled rejection:", e.reason);
-});
+    window.addEventListener("unhandledrejection", (e) => {
+      console.error("Unhandled rejection:", e.reason);
+    });
 
-navigator.gpu?.addEventListener?.("uncapturederror", (e) => {
-  console.error("WebGPU uncaptured error:", e.error);
-});
-    // Basic WebGPU availability check
+    navigator.gpu?.addEventListener?.("uncapturederror", (e) => {
+      console.error("WebGPU uncaptured error:", e.error);
+    });
+
+    // Model size estimates for VRAM usage
+    const modelSizes = {
+      'onnx-community/Qwen2.5-0.5B-Instruct': '~500MB',
+      'onnx-community/Qwen2.5-1.5B-Instruct': '~1.5GB',
+      'Xenova/Phi-3-mini-4k-instruct': '~2GB'
+    };
+
+    // WebGPU availability check with detailed info
     if (!('gpu' in navigator)) {
-      gpuStatus.innerHTML = `<span class="bad">WebGPU not available</span> (try latest Chrome/Edge)`;
+      gpuStatus.innerHTML = `<span class="status-badge error"><span class="status-indicator"></span>WebGPU not available</span>`;
+      gpuDetails.innerHTML = '<p class="muted" style="margin-top: 8px;">Try latest Chrome 113+ or Edge 113+</p>';
     } else {
       try {
-        const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
-        if (!adapter) {
-          gpuStatus.innerHTML = `<span class="bad">WebGPU adapter not found</span>`;
+        gpuAdapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+        if (!gpuAdapter) {
+          gpuStatus.innerHTML = `<span class="status-badge error"><span class="status-indicator"></span>WebGPU adapter not found</span>`;
         } else {
-          const info = adapter.info || {};
-          gpuStatus.innerHTML = `<span class="ok">WebGPU available</span>` +
-            (info.description ? ` — ${info.description}` : ``);
+          const info = gpuAdapter.info || {};
+          gpuStatus.innerHTML = `<span class="status-badge success"><span class="status-indicator"></span>WebGPU Available</span>`;
+          
+          if (info.vendor || info.architecture || info.device || info.description) {
+            const detailsHTML = `
+              <div class="info-grid" style="margin-top: 16px;">
+                ${info.vendor ? `<div class="info-item"><div class="info-label">Vendor</div><div class="info-value">${info.vendor}</div></div>` : ''}
+                ${info.architecture ? `<div class="info-item"><div class="info-label">Architecture</div><div class="info-value">${info.architecture}</div></div>` : ''}
+                ${info.device ? `<div class="info-item"><div class="info-label">Device</div><div class="info-value">${info.device}</div></div>` : ''}
+                ${info.description ? `<div class="info-item"><div class="info-label">Description</div><div class="info-value">${info.description}</div></div>` : ''}
+              </div>
+            `;
+            gpuDetails.innerHTML = detailsHTML;
+          }
         }
       } catch (e) {
-        gpuStatus.innerHTML = `<span class="bad">WebGPU error</span>: ${e?.message || e}`;
+        gpuStatus.innerHTML = `<span class="status-badge error"><span class="status-indicator"></span>WebGPU Error</span>`;
+        gpuDetails.innerHTML = `<p class="muted" style="margin-top: 8px;">${e?.message || e}</p>`;
       }
     }
 
     // Load Transformers.js from CDN
-    // Pin a version for stability
     import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
 
-
     // Prefer WebGPU
-    env.backends.onnx.wasm.numThreads = 1; // reduce CPU contention
-    env.allowLocalModels = false; // set true only if you host files locally
-    // Try to force WebGPU if available
-    // (If WebGPU isn't available, it will fall back to WASM.)
+    env.backends.onnx.wasm.numThreads = 1;
+    env.allowLocalModels = false;
     env.backends.onnx.preferredBackend = 'webgpu';
 
     let generator = null;
+    let currentBackend = 'unknown';
 
     loadBtn.addEventListener('click', async () => {
       const model = modelSelect.value;
       loadState.textContent = 'Loading… (first time downloads model)';
-      output.textContent = '';
+      output.textContent = 'Waiting for model to load...';
       runBtn.disabled = true;
       generator = null;
+      backendEl.textContent = 'Loading...';
+      vramUsageEl.textContent = modelSizes[model] || '~1GB';
 
       try {
-        // text-generation pipeline (causal LM)
         generator = await pipeline('text-generation', model, {
-          // device: 'webgpu' is implied via preferredBackend, but we can still provide it:
           device: 'webgpu',
           dtype: "q4",
         });
 
-        loadState.textContent = 'Loaded ✅';
+        currentBackend = 'WebGPU';
+        backendEl.textContent = currentBackend;
+        loadState.textContent = '✅ Loaded successfully';
+        output.textContent = 'Model loaded! Enter a prompt and click Generate.';
         runBtn.disabled = false;
       } catch (e) {
-        loadState.textContent = `Load failed ❌: ${e?.message || e}`;
+        loadState.textContent = `❌ Load failed: ${e?.message || e}`;
+        output.textContent = `Error loading model: ${e?.message || e}`;
+        backendEl.textContent = 'Failed';
         console.error(e);
       }
     });
@@ -152,9 +683,11 @@ navigator.gpu?.addEventListener?.("uncapturederror", (e) => {
       const prompt = promptEl.value.trim();
       if (!prompt) return;
 
-      output.textContent = '';
+      output.textContent = 'Generating...';
       runState.textContent = 'Generating…';
       runBtn.disabled = true;
+      genSpeedEl.textContent = 'Calculating...';
+      totalTimeEl.textContent = 'Running...';
 
       const max_new_tokens = Number(maxTokensEl.value || 120);
       const temperature = Number(tempEl.value || 0.7);
@@ -162,9 +695,7 @@ navigator.gpu?.addEventListener?.("uncapturederror", (e) => {
       try {
         const t0 = performance.now();
 
-        // Simple instruct wrapper (works reasonably with instruct models)
-        const fullPrompt =
-`You are a helpful assistant.
+        const fullPrompt = `You are a helpful assistant.
 User: ${prompt}
 Assistant:`;
 
@@ -172,20 +703,25 @@ Assistant:`;
           max_new_tokens,
           do_sample: temperature > 0,
           temperature,
-          // Keep it small to fit VRAM:
           repetition_penalty: 1.05,
         });
 
         const t1 = performance.now();
+        const elapsedSeconds = (t1 - t0) / 1000;
+        const tokensPerSecond = max_new_tokens / elapsedSeconds;
+        
         const text = res?.[0]?.generated_text ?? JSON.stringify(res, null, 2);
-
-        // Show only assistant portion if present
         const idx = text.lastIndexOf('Assistant:');
         output.textContent = (idx >= 0 ? text.slice(idx + 'Assistant:'.length) : text).trim();
 
-        runState.textContent = `Done in ${((t1 - t0) / 1000).toFixed(2)}s`;
+        runState.textContent = `✅ Generation complete`;
+        genSpeedEl.textContent = `${tokensPerSecond.toFixed(1)} tokens/s`;
+        totalTimeEl.textContent = `${elapsedSeconds.toFixed(2)}s`;
       } catch (e) {
-        runState.textContent = `Generate failed ❌: ${e?.message || e}`;
+        runState.textContent = `❌ Generate failed: ${e?.message || e}`;
+        output.textContent = `Error during generation: ${e?.message || e}`;
+        genSpeedEl.textContent = 'Error';
+        totalTimeEl.textContent = 'Failed';
         console.error(e);
       } finally {
         runBtn.disabled = false;
