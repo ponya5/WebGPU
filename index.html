@@ -362,17 +362,21 @@
     .footer-content {
       max-width: 900px;
       margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
     }
 
     .copyright {
       color: var(--text-secondary);
       font-size: 0.875rem;
-      margin-bottom: var(--spacing-md);
     }
 
     .social-links {
       display: flex;
-      justify-content: center;
+      justify-content: flex-end;
       gap: var(--spacing-lg);
       align-items: center;
     }
@@ -430,6 +434,16 @@
 
       .tooltip {
         width: 240px;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--spacing-md);
+      }
+
+      .social-links {
+        justify-content: center;
       }
     }
 
