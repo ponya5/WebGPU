@@ -7,7 +7,12 @@ Run Large Language Models directly in your browser using GPU acceleration via We
 
 ## About
 
+<<<<<<< HEAD
 A single-file HTML application that runs AI models locally in your browser using WebGPU for GPU acceleration. Uses Hugging Face's Transformers.js library and downloads models from the Hugging Face Hub.
+=======
+This project demonstrates the power of **WebGPU** - a cutting-edge web standard that brings GPU-accelerated computing to web browsers. By combining WebGPU with Transformers.js, we can run sophisticated Large Language Models (LLMs) entirely in the browser, without requiring any backend servers or cloud infrastructure.
+It uses Hugging Face's Transformers.js library and downloads models from the Hugging Face Hub
+>>>>>>> 60f598519412b2992d459793a267f5f3efc49e63
 
 **Key Benefits:**
 - 🔒 Complete privacy - data never leaves your browser
