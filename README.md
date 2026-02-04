@@ -8,6 +8,7 @@ A beautiful demonstration of running Large Language Models directly in your brow
 ## About This Project
 
 This project demonstrates the power of **WebGPU** - a cutting-edge web standard that brings GPU-accelerated computing to web browsers. By combining WebGPU with Transformers.js, we can run sophisticated Large Language Models (LLMs) entirely in the browser, without requiring any backend servers or cloud infrastructure.
+It uses Hugging Face's Transformers.js library and downloads models from the Hugging Face Hub
 
 ### What Makes This Special?
 
